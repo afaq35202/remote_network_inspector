@@ -4,8 +4,7 @@
 
 Your app hosts a tiny dashboard. Testers on the same Wi-Fi open `http://<device-ip>:9945` and watch every Dio API call live: method, status, duration, size, request headers, payload, and pretty-printed response — just like the Network tab in Chrome DevTools.
 
-<!-- TODO: add a screenshot/GIF here — packages with a demo image convert far better
-![screenshot](https://raw.githubusercontent.com/afaq35202/remote_network_inspector/main/doc/screenshot.png) -->
+![Remote Network Inspector dashboard](https://raw.githubusercontent.com/afaq35202/remote_network_inspector/main/doc/video.mov)
 
 ## Why?
 
