@@ -1,3 +1,7 @@
+## 0.1.2
+
+- Added live demo GIF to README.
+
 ## 0.1.1
 
 - Fixed homepage, repository and issue tracker links in package metadata.

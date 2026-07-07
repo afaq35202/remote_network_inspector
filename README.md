@@ -4,7 +4,7 @@
 
 Your app hosts a tiny dashboard. Testers on the same Wi-Fi open `http://<device-ip>:9945` and watch every Dio API call live: method, status, duration, size, request headers, payload, and pretty-printed response — just like the Network tab in Chrome DevTools.
 
-![Remote Network Inspector dashboard](https://raw.githubusercontent.com/afaq35202/remote_network_inspector/main/doc/video.mov)
+![Remote Network Inspector dashboard](https://raw.githubusercontent.com/afaq35202/remote_network_inspector/main/doc/demo.gif)
 
 ## Why?
 
@@ -30,7 +30,7 @@ Perfect for handing **profile/QA builds** to testers who can't run developer too
 
 ```yaml
 dev_dependencies:
-  remote_network_inspector: ^0.1.1
+  remote_network_inspector: ^0.1.2
 ```
 
 ```dart
