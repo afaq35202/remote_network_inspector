@@ -5,6 +5,16 @@ import 'package:dio/dio.dart';
 
 import 'dashboard_html.dart';
 
+/// `true` only in release builds (`dart.vm.product` without profiling),
+/// mirroring Flutter's `kReleaseMode` — but without depending on Flutter.
+const bool _kReleaseMode = bool.fromEnvironment('dart.vm.product') &&
+    !bool.fromEnvironment('dart.vm.profile');
+
+/// The Android emulator's well-known NAT address. When the device reports
+/// this IP, the printed URL is unreachable from the host machine and the
+/// developer must use `adb forward` instead.
+const String _androidEmulatorIp = '10.0.2.15';
+
 /// Hosts the in-app inspector server and stores the captured network events.
 ///
 /// Access it through the [instance] singleton:
@@ -26,11 +36,27 @@ class RemoteNetworkInspector {
   int _maxHistory = 500;
   int _maxBodyChars = 200000;
 
+  // Events are buffered even before [start] so app-startup calls are not
+  // lost — except in release builds, where the inspector stays inert until
+  // started with `allowRelease: true`.
+  bool _enabled = !_kReleaseMode;
+
   /// Whether the dashboard server is currently running.
   bool get isRunning => _server != null;
 
   /// Starts the dashboard server and returns the URL(s) to open in a
   /// browser on the same network (one per network interface).
+  ///
+  /// Safe to call unconditionally: in **release builds** this is a no-op
+  /// that returns an empty list, so the inspector is live in debug and
+  /// profile mode but can never ship enabled. Pass [allowRelease] `true`
+  /// to override (strongly discouraged — the dashboard exposes headers and
+  /// bodies to anyone on the network).
+  ///
+  /// On the **Android emulator** the device sits behind NAT, so the
+  /// reported IP is unreachable from your computer. In that case this
+  /// method logs the `adb forward` command to run and also returns
+  /// `http://localhost:<port>` (which works once forwarding is set up).
   ///
   /// * [port] — TCP port for the dashboard (default `9945`).
   /// * [maxHistory] — how many calls to keep in memory for late-joining
@@ -38,6 +64,8 @@ class RemoteNetworkInspector {
   /// * [maxBodyChars] — request/response bodies longer than this are
   ///   truncated to keep memory and the UI snappy (default `200000`).
   /// * [logUrls] — print the dashboard URLs to the console (default `true`).
+  /// * [allowRelease] — allow the server to run in release builds
+  ///   (default `false`).
   ///
   /// Calling [start] when the server is already running is a no-op and
   /// simply returns the URLs again.
@@ -46,7 +74,17 @@ class RemoteNetworkInspector {
     int maxHistory = 500,
     int maxBodyChars = 200000,
     bool logUrls = true,
+    bool allowRelease = false,
   }) async {
+    if (_kReleaseMode && !allowRelease) {
+      if (logUrls) {
+        // ignore: avoid_print
+        print('[RemoteNetworkInspector] Disabled in release builds. '
+            'Pass allowRelease: true to override (not recommended).');
+      }
+      return const [];
+    }
+    _enabled = true;
     _maxHistory = maxHistory;
     _maxBodyChars = maxBodyChars;
 
@@ -56,18 +94,32 @@ class RemoteNetworkInspector {
     }
 
     final urls = <String>[];
+    var onAndroidEmulator = false;
     for (final ni in await NetworkInterface.list(
       type: InternetAddressType.IPv4,
       includeLoopback: false,
     )) {
       for (final addr in ni.addresses) {
+        if (addr.address == _androidEmulatorIp) onAndroidEmulator = true;
         urls.add('http://${addr.address}:${_server!.port}');
       }
+    }
+    if (onAndroidEmulator || urls.isEmpty) {
+      // Behind emulator NAT (or no external interface at all) the LAN IP is
+      // useless from the host — localhost + `adb forward` is the way in.
+      urls.add('http://localhost:${_server!.port}');
     }
     if (logUrls) {
       for (final u in urls) {
         // ignore: avoid_print
         print('[RemoteNetworkInspector] Dashboard available at: $u');
+      }
+      if (onAndroidEmulator) {
+        // ignore: avoid_print
+        print('[RemoteNetworkInspector] Android emulator detected — the IP '
+            'above is not reachable from your computer. Run:\n'
+            '    adb forward tcp:${_server!.port} tcp:${_server!.port}\n'
+            'then open http://localhost:${_server!.port} on this machine.');
       }
     }
     return urls;
@@ -125,6 +177,7 @@ class RemoteNetworkInspector {
   /// Normally called by [RemoteNetworkInspectorInterceptor]; call it
   /// yourself only if you are integrating a custom HTTP client.
   void addEvent(Map<String, dynamic> event) {
+    if (!_enabled) return;
     _history.add(event);
     if (_history.length > _maxHistory) _history.removeAt(0);
     _broadcast({'type': 'call', 'data': event});

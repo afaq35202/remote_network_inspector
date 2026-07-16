@@ -23,6 +23,27 @@ void main() {
     });
   });
 
+  group('server lifecycle', () {
+    tearDown(() => inspector.stop());
+
+    test('start binds, returns URLs, and is idempotent', () async {
+      final urls = await inspector.start(port: 0, logUrls: false);
+      expect(inspector.isRunning, isTrue);
+      expect(urls, isNotEmpty);
+      expect(urls, everyElement(startsWith('http://')));
+
+      // Second start() is a no-op that returns URLs again.
+      final again = await inspector.start(port: 0, logUrls: false);
+      expect(again, isNotEmpty);
+    });
+
+    test('stop shuts the server down', () async {
+      await inspector.start(port: 0, logUrls: false);
+      await inspector.stop();
+      expect(inspector.isRunning, isFalse);
+    });
+  });
+
   group('events', () {
     test('assigns increasing ids and stores history', () {
       final a = inspector.nextId();

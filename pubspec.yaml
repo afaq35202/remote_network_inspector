@@ -1,9 +1,9 @@
 name: remote_network_inspector
 description: >-
-  DevTools-style network inspector for QA builds. Inspect Dio API calls,
-  headers, payloads and responses live from any browser on the same Wi-Fi.
-  No SDK, no adb, no proxy setup.
-version: 0.1.2
+  DevTools-style network inspector for debug, profile and QA builds. Inspect
+  Dio API calls, headers, payloads and responses live from any browser on the
+  same Wi-Fi. Auto-disabled in release. No SDK, no proxy setup.
+version: 0.2.0
 homepage: https://github.com/afaq35202/remote_network_inspector
 repository: https://github.com/afaq35202/remote_network_inspector
 issue_tracker: https://github.com/afaq35202/remote_network_inspector/issues

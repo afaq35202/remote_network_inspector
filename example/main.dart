@@ -1,6 +1,12 @@
 // Run with: dart example/main.dart
 // Then open the printed URL in a browser on the same network and watch the
 // requests appear live.
+//
+// Running your app on the Android emulator instead? The printed IP
+// (10.0.2.15) is only reachable inside the emulator. Forward the port first:
+//   adb forward tcp:9945 tcp:9945
+// then open http://localhost:9945 on your computer. The iOS simulator needs
+// no forwarding — http://localhost:9945 works directly.
 import 'package:dio/dio.dart';
 import 'package:remote_network_inspector/remote_network_inspector.dart';
 
