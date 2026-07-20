@@ -1,3 +1,8 @@
+## 0.2.1
+
+- Shortened the package description to fit pub.dev's 180-character limit.
+- Bumped `lints` to `^6.0.0` to keep dev dependencies current.
+
 ## 0.2.0
 
 - **Release-mode safety:** the inspector is now automatically disabled in
