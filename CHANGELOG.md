@@ -1,3 +1,12 @@
+## 0.2.2
+
+- **Fix:** `start()` no longer crashes with `SocketException: Address already
+  in use` when the port is taken (e.g. a socket left over from a hot restart,
+  or another simulator/app on the same machine). It now falls back to the
+  next free port among the following 9 and logs the port it chose; if none
+  is free, it logs the error and returns an empty list instead of throwing.
+- Concurrent `start()` calls now share a single bind attempt.
+
 ## 0.2.1
 
 - Shortened the package description to fit pub.dev's 180-character limit.

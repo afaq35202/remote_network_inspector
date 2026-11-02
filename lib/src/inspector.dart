@@ -58,7 +58,10 @@ class RemoteNetworkInspector {
   /// method logs the `adb forward` command to run and also returns
   /// `http://localhost:<port>` (which works once forwarding is set up).
   ///
-  /// * [port] — TCP port for the dashboard (default `9945`).
+  /// * [port] — TCP port for the dashboard (default `9945`). If it is
+  ///   already in use (e.g. after a hot restart), the next free port in
+  ///   the following 9 is used instead; if none is free, the error is
+  ///   logged and an empty list is returned instead of throwing.
   /// * [maxHistory] — how many calls to keep in memory for late-joining
   ///   browsers (default `500`).
   /// * [maxBodyChars] — request/response bodies longer than this are
@@ -89,8 +92,11 @@ class RemoteNetworkInspector {
     _maxBodyChars = maxBodyChars;
 
     if (_server == null) {
-      _server = await HttpServer.bind(InternetAddress.anyIPv4, port);
-      _server!.listen(_handleRequest, onError: (_) {});
+      // Coalesce concurrent start() calls onto a single bind attempt.
+      final server = await (_binding ??= _bind(port, logUrls));
+      _binding = null;
+      if (server == null) return const [];
+      _server ??= server;
     }
 
     final urls = <String>[];
@@ -123,6 +129,41 @@ class RemoteNetworkInspector {
       }
     }
     return urls;
+  }
+
+  /// How many consecutive ports to try when the requested one is taken.
+  static const int _portAttempts = 10;
+
+  Future<HttpServer?>? _binding;
+
+  /// Binds the dashboard server, falling back to the next ports when the
+  /// requested one is already in use (e.g. a socket left over from a hot
+  /// restart, or another simulator/app on the same machine). Never throws:
+  /// a failure to bind must not crash the host app.
+  Future<HttpServer?> _bind(int port, bool log) async {
+    final last = port == 0 ? 0 : port + _portAttempts - 1;
+    for (var p = port; p <= last; p++) {
+      try {
+        final server = await HttpServer.bind(InternetAddress.anyIPv4, p);
+        server.listen(_handleRequest, onError: (_) {});
+        if (log && p != port) {
+          // ignore: avoid_print
+          print('[RemoteNetworkInspector] Port $port is in use; '
+              'using port $p instead.');
+        }
+        return server;
+      } on SocketException catch (e) {
+        if (p == last) {
+          if (log) {
+            // ignore: avoid_print
+            print('[RemoteNetworkInspector] Could not start dashboard '
+                '(ports $port-$last unavailable): ${e.message}');
+          }
+          return null;
+        }
+      }
+    }
+    return null;
   }
 
   /// Stops the server and disconnects all dashboard clients.
